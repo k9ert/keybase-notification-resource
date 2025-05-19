@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+# Ensure we're using the bash shell
+if [ -z "$BASH_VERSION" ]; then
+  exec bash "$0" "$@"
+fi
+
+# Parse input from stdin
+payload=$(cat)
+
+# Extract version from the payload, if it exists
+version=$(echo "$payload" | jq -r '.version.timestamp // empty')
+
+if [ -z "$version" ]; then
+  # If no version was provided, return the current timestamp as the version
+  timestamp=$(date +%s)
+  echo "[{\"timestamp\": \"$timestamp\"}]"
+else
+  # If a version was provided, return it
+  echo "[{\"timestamp\": \"$version\"}]"
+fi

@@ -1,0 +1,6 @@
+# Test files
+test/input.json
+test/message.txt
+
+# Build artifacts
+*.deb

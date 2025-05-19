@@ -1,0 +1,123 @@
+#!/bin/bash
+
+set -e
+
+# Ensure we're using the bash shell
+if [ -z "$BASH_VERSION" ]; then
+  exec bash "$0" "$@"
+fi
+
+# Parse input from stdin
+payload=$(cat)
+
+# Extract source directory from arguments
+source_dir=$1
+if [ -z "$source_dir" ]; then
+  echo "usage: $0 <path/to/source>" >&2
+  exit 1
+fi
+
+# Extract source configuration
+username=$(echo "$payload" | jq -r '.source.username // empty')
+paperkey=$(echo "$payload" | jq -r '.source.paperkey // empty')
+team=$(echo "$payload" | jq -r '.source.team // empty')
+default_channel=$(echo "$payload" | jq -r '.source.default_channel // "general"')
+disable=$(echo "$payload" | jq -r '.source.disable // "false"')
+
+# Extract params
+text=$(echo "$payload" | jq -r '.params.text // empty')
+text_file=$(echo "$payload" | jq -r '.params.text_file // empty')
+channel=$(echo "$payload" | jq -r '.params.channel // empty')
+override_team=$(echo "$payload" | jq -r '.params.team // empty')
+silent=$(echo "$payload" | jq -r '.params.silent // "false"')
+
+# Use override_team if provided, otherwise use team from source
+if [ -n "$override_team" ]; then
+  team="$override_team"
+fi
+
+# Use channel if provided, otherwise use default_channel from source
+if [ -z "$channel" ]; then
+  channel="$default_channel"
+fi
+
+# Check if disable is set to true
+if [ "$disable" = "true" ]; then
+  echo "Notifications are disabled. Skipping."
+  timestamp=$(date +%s)
+  echo "{\"version\":{\"timestamp\":\"$timestamp\"}}"
+  exit 0
+fi
+
+# Check if required parameters are provided
+if [ -z "$username" ]; then
+  echo "Error: username is required in source configuration" >&2
+  exit 1
+fi
+
+if [ -z "$paperkey" ]; then
+  echo "Error: paperkey is required in source configuration" >&2
+  exit 1
+fi
+
+# Process text_file if provided
+if [ -n "$text_file" ]; then
+  text_file_path="${source_dir}/${text_file}"
+  if [ -f "$text_file_path" ]; then
+    TEXT_FILE_CONTENT=$(cat "$text_file_path")
+    export TEXT_FILE_CONTENT
+  else
+    echo "Warning: text_file '$text_file' not found" >&2
+    TEXT_FILE_CONTENT="(no notification provided)"
+    export TEXT_FILE_CONTENT
+  fi
+fi
+
+# If text is empty but text_file is provided, use the content of text_file
+if [ -z "$text" ] && [ -n "$TEXT_FILE_CONTENT" ]; then
+  text="$TEXT_FILE_CONTENT"
+fi
+
+# If text is still empty, use a default message
+if [ -z "$text" ]; then
+  text="(missing notification text)"
+fi
+
+# Evaluate environment variables in the text
+# This allows for $BUILD_ID, $BUILD_NAME, etc. to be expanded
+eval "text_expanded=\"$text\""
+
+# Send the message using the Python script
+echo "Sending message to Keybase..."
+
+# Create JSON input for the Python script
+json_input=$(cat << EOF
+{
+  "username": "$username",
+  "paperkey": "$paperkey",
+  "team": "$team",
+  "channel": "$channel",
+  "message": "$text_expanded",
+  "silent": $silent
+}
+EOF
+)
+
+# Call the shell script
+if [ "$silent" = "true" ]; then
+  echo "$json_input" | /opt/resource/keybase_sender.sh > /dev/null 2>&1
+else
+  echo "$json_input" | /opt/resource/keybase_sender.sh
+fi
+
+# Check if the shell script was successful
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to send message to Keybase" >&2
+  exit 1
+fi
+
+# Generate a new version
+timestamp=$(date +%s)
+
+# Output the version
+echo "{\"version\":{\"timestamp\":\"$timestamp\"}}"

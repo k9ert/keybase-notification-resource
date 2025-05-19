@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+
+# Ensure we're using the bash shell
+if [ -z "$BASH_VERSION" ]; then
+  exec bash "$0" "$@"
+fi
+
+# Parse input from stdin
+payload=$(cat)
+
+# Extract destination directory from arguments
+destination=$1
+if [ -z "$destination" ]; then
+  echo "usage: $0 <path/to/destination>" >&2
+  exit 1
+fi
+
+# Create the destination directory if it doesn't exist
+mkdir -p "$destination"
+
+# Extract version from the payload
+version=$(echo "$payload" | jq -r '.version.timestamp // empty')
+
+if [ -z "$version" ]; then
+  # If no version was provided, use the current timestamp
+  version=$(date +%s)
+fi
+
+# Output the version
+echo "{\"version\":{\"timestamp\":\"$version\"}}" > "$destination/version.json"
+
+# Return the version to stdout
+echo "{\"version\":{\"timestamp\":\"$version\"}}"
