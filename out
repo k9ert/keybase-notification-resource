@@ -21,7 +21,7 @@ fi
 username=$(echo "$payload" | jq -r '.source.username // empty')
 paperkey=$(echo "$payload" | jq -r '.source.paperkey // empty')
 team=$(echo "$payload" | jq -r '.source.team // empty')
-default_channel=$(echo "$payload" | jq -r '.source.default_channel // "general"')
+default_channel=$(echo "$payload" | jq -r '.source.default_channel // empty')
 disable=$(echo "$payload" | jq -r '.source.disable // "false"')
 
 # Extract params
@@ -38,7 +38,12 @@ fi
 
 # Use channel if provided, otherwise use default_channel from source
 if [ -z "$channel" ]; then
-  channel="$default_channel"
+  if [ -n "$default_channel" ]; then
+    channel="$default_channel"
+  else
+    # If no channel is specified, we'll send to the user directly
+    channel="$username"
+  fi
 fi
 
 # Check if disable is set to true
@@ -87,34 +92,34 @@ fi
 # This allows for $BUILD_ID, $BUILD_NAME, etc. to be expanded
 eval "text_expanded=\"$text\""
 
-# Send the message using the Python script
-echo "Sending message to Keybase..."
-
-# Create JSON input for the Python script
-json_input=$(cat << EOF
-{
-  "username": "$username",
-  "paperkey": "$paperkey",
-  "team": "$team",
-  "channel": "$channel",
-  "message": "$text_expanded",
-  "silent": $silent
-}
-EOF
-)
-
-# Call the shell script
+# Set up Keybase
+echo "Setting up Keybase..."
 if [ "$silent" = "true" ]; then
-  echo "$json_input" | /opt/resource/keybase_sender.sh > /dev/null 2>&1
+  # Run keybase in silent mode
+  keybase oneshot --username "$username" --paperkey "$paperkey" > /dev/null 2>&1
 else
-  echo "$json_input" | /opt/resource/keybase_sender.sh
+  keybase oneshot --username "$username" --paperkey "$paperkey"
 fi
 
-# Check if the shell script was successful
-if [ $? -ne 0 ]; then
-  echo "Error: Failed to send message to Keybase" >&2
-  exit 1
+# Send the message
+echo "Sending message to Keybase..."
+if [ -n "$team" ]; then
+  # Send to team channel
+  if [ "$silent" = "true" ]; then
+    keybase chat send --channel "$channel" "team:$team" "$text_expanded" > /dev/null 2>&1
+  else
+    keybase chat send --channel "$channel" "team:$team" "$text_expanded"
+  fi
+else
+  # Send to user
+  if [ "$silent" = "true" ]; then
+    keybase chat send "$channel" "$text_expanded" > /dev/null 2>&1
+  else
+    keybase chat send "$channel" "$text_expanded"
+  fi
 fi
+
+# No need to check exit code here as the commands above will exit with non-zero if they fail
 
 # Generate a new version
 timestamp=$(date +%s)

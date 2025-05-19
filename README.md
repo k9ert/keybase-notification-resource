@@ -2,7 +2,18 @@
 
 A [Concourse CI](https://concourse-ci.org/) resource for sending notifications to [Keybase](https://keybase.io/) chats.
 
-This resource uses the Keybase API to send messages to Keybase users, teams, and channels. It is designed to be stateless, with no secrets stored in the image. Authentication is done at runtime using the provided username and paperkey.
+This resource uses the Keybase CLI to send messages to Keybase users, teams, and channels. It is designed to be stateless, with no secrets stored in the image. Authentication is done at runtime using the provided username and paperkey.
+
+The image includes the Keybase CLI and a utility script to generate a paperkey for your Keybase account, which can be useful for setting up bot accounts.
+
+## Features
+
+- Send messages to Keybase users, teams, and channels
+- Support for message formatting (plain text, markdown)
+- Support for silent notifications
+- Stateless design with no secrets stored in the image
+- Includes the Keybase CLI for full Keybase functionality
+- Utility script for generating paperkeys
 
 ## Resource Type Configuration
 
@@ -20,7 +31,7 @@ resource_types:
 * `username`: *Required.* The Keybase username to authenticate with.
 * `paperkey`: *Required.* The paper key for authentication. You can generate a paper key with `keybase paperkey`.
 * `team`: *Optional.* The default team to send messages to. If not specified, messages will be sent to the user specified in the `channel` parameter.
-* `default_channel`: *Optional.* The default channel to send messages to. If not specified, messages will be sent to the `general` channel of the team.
+* `default_channel`: *Optional.* The default channel to send messages to. If not specified and no channel is provided in the params, messages will be sent to the user specified by the `username` parameter.
 * `disable`: *Optional.* Set to `true` to skip all messaging. Convenient for temporarily disabling notifications without editing your pipelines.
 
 Example:
@@ -114,3 +125,48 @@ See the [official documentation](https://concourse-ci.org/implementing-resource-
     text: Important alert!
     channel: urgent-alerts
 ```
+
+## Generating a Paperkey
+
+The Docker image includes a utility script to generate a paperkey for your Keybase account. This is useful for creating paperkeys for bot accounts that will be used with this resource.
+
+To generate a paperkey:
+
+```bash
+# Pull the image
+docker pull my-registry/keybase-resource:latest
+
+# Run the generate-paperkey.sh script
+docker run --rm -it my-registry/keybase-resource:latest /usr/local/bin/generate-paperkey.sh <username> <password>
+```
+
+Replace `<username>` with your Keybase username and `<password>` with your Keybase password. The script will:
+
+1. Start the Keybase service
+2. Log in to your Keybase account
+3. Generate a new paperkey
+4. Display the paperkey in the terminal
+
+Save this paperkey in a secure location, as it provides full access to your Keybase account. You can use this paperkey in your Concourse pipeline configuration.
+
+## Testing the Resource
+
+The repository includes a test script to verify that the resource is working correctly. The script sends a test message to a specified team or user.
+
+```bash
+# Run the test script
+./test/docker-test.sh <username> <paperkey> <recipient> [channel]
+```
+
+Replace:
+- `<username>` with your Keybase username
+- `<paperkey>` with your Keybase paperkey
+- `<recipient>` with either:
+  - A team name (when sending to a team channel)
+  - A username (when sending a direct message)
+- `[channel]` (optional) with the channel name (only needed when sending to a team)
+
+The script will:
+1. Create a temporary test message
+2. Send the message to the specified team/channel or user
+3. Report the results

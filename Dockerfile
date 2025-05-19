@@ -1,11 +1,11 @@
-FROM alpine:3.16
+FROM keybaseio/client:stable
 
-# Install dependencies
-RUN apk add --no-cache \
-    bash \
-    ca-certificates \
+# Install additional dependencies
+RUN apt-get update && apt-get install -y \
     jq \
-    curl
+    expect \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create resource directory
 RUN mkdir -p /opt/resource
@@ -14,10 +14,10 @@ RUN mkdir -p /opt/resource
 COPY check /opt/resource/
 COPY in /opt/resource/
 COPY out /opt/resource/
-COPY keybase_sender.sh /opt/resource/
+COPY generate-paperkey.sh /usr/local/bin/
 
 # Make scripts executable
-RUN chmod +x /opt/resource/check /opt/resource/in /opt/resource/out /opt/resource/keybase_sender.sh
+RUN chmod +x /opt/resource/check /opt/resource/in /opt/resource/out /usr/local/bin/generate-paperkey.sh
 
 # Set working directory
 WORKDIR /opt/resource
