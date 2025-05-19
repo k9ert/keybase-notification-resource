@@ -22,7 +22,7 @@ resource_types:
 - name: keybase-chat
   type: docker-image
   source:
-    repository: my-registry/keybase-resource
+    repository: k9ert/keybase-notification-resource
     tag: latest
 ```
 
@@ -134,10 +134,10 @@ To generate a paperkey:
 
 ```bash
 # Pull the image
-docker pull my-registry/keybase-resource:latest
+docker pull k9ert/keybase-notification-resource:latest
 
 # Run the generate-paperkey.sh script
-docker run --rm -it my-registry/keybase-resource:latest /usr/local/bin/generate-paperkey.sh <username> <password>
+docker run --rm -it k9ert/keybase-notification-resource:latest /usr/local/bin/generate-paperkey.sh <username> <password>
 ```
 
 Replace `<username>` with your Keybase username and `<password>` with your Keybase password. The script will:

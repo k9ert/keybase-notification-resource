@@ -1,8 +1,8 @@
 .PHONY: build test clean
 
 # Default registry and image name
-REGISTRY ?= my-registry
-IMAGE_NAME ?= keybase-resource
+REGISTRY ?= k9ert
+IMAGE_NAME ?= keybase-notification-resource
 TAG ?= latest
 
 # Full image name

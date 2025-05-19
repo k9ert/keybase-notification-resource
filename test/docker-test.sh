@@ -84,7 +84,7 @@ fi
 # Run the Docker container with the test input
 cat "$TEMP_DIR/input.json" | docker run --rm -i \
   -v "$TEMP_DIR:/tmp/test" \
-  my-registry/keybase-resource:latest \
+  k9ert/keybase-notification-resource:latest \
   /opt/resource/out /tmp/test
 
 echo "Test completed."
